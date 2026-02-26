@@ -15,7 +15,7 @@ from PIL import Image
 
 
 # ---------------- AI & MODEL IMPORTS ----------------
-from model import CNNWithTexture
+from model import ResNetTextureFusion
 from utils import (
     preprocess_image,
     extract_texture_features,
@@ -146,10 +146,10 @@ def load_model():
 
         model_path = hf_hub_download(
             repo_id="reddysorgs/skin-cancer-cdss-model",
-            filename="final_cnn_texture_model.pth"
+            filename="final_resnet_texture_model.pth"
         )
 
-        model = CNNWithTexture()
+        model = ResNetTextureFusion()
         model.load_state_dict(
             torch.load(model_path, map_location="cpu")
         )
@@ -213,7 +213,7 @@ if uploaded_file is not None:
 
     if model is None:
         model = load_model()
-        gradcam = GradCAM(model, model.cnn[-3])
+        gradcam = GradCAM(model, model.backbone.layer4[-1])
 
 
     # ---------------- IMAGE ----------------
@@ -260,6 +260,8 @@ if uploaded_file is not None:
     # ========================================================
     # MODEL PREDICTION (LOGIC UNCHANGED)
     # ========================================================
+
+    
     image_tensor = preprocess_image(image)
     texture_tensor = extract_texture_features(image)
 
@@ -482,3 +484,4 @@ st.markdown("""
 Developed by Manikanta | Final Year Project | AI & Data Science
 </p>
 """, unsafe_allow_html=True)
+
