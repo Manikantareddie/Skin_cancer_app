@@ -1,44 +1,33 @@
 import torch
 import torch.nn as nn
+import torchvision.models as models
 
-class CNNWithTexture(nn.Module):
+
+class ResNetTextureFusion(nn.Module):
     def __init__(self):
-        super().__init__()
+        super(ResNetTextureFusion, self).__init__()
 
-        self.cnn = nn.Sequential(
-            nn.Conv2d(3, 32, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
+        # Pretrained ResNet18 backbone
+        self.backbone = models.resnet18(weights=None)
 
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
+        # Remove final FC
+        self.backbone.fc = nn.Identity()  # Output = 512 features
 
-            nn.Conv2d(64, 128, 3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2)
-        )
-
-        self.img_fc = nn.Linear(128 * 28 * 28, 256)
+        # Texture branch
         self.tex_fc = nn.Linear(12, 64)
 
+        # Fusion classifier
         self.classifier = nn.Sequential(
+            nn.Linear(512 + 64, 256),
             nn.ReLU(),
-            nn.Linear(320, 128),
-            nn.ReLU(),
-            nn.Linear(128, 2)
+            nn.Dropout(0.3),
+            nn.Linear(256, 2)
         )
 
     def forward(self, image, texture):
-        x = self.cnn(image)
-        x = x.view(x.size(0), -1)
-        x = self.img_fc(x)
+        img_feat = self.backbone(image)   # [B, 512]
+        tex_feat = self.tex_fc(texture)   # [B, 64]
 
-        t = self.tex_fc(texture)
-        return self.classifier(torch.cat([x, t], dim=1))
+        fused = torch.cat([img_feat, tex_feat], dim=1)
 
-
-from model import CNNWithTexture
-
-model = CNNWithTexture()
-print(model.cnn)
+        return self.classifier(fused)
