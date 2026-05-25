@@ -2,7 +2,11 @@ import cv2
 import numpy as np
 import torch
 import pywt
-from skimage.feature import graycomatrix, graycoprops
+try:
+    from skimage.feature import graycomatrix, graycoprops
+except ImportError:
+    from skimage.feature import greycomatrix as graycomatrix
+    from skimage.feature import greycoprops as graycoprops
 from torchvision import transforms
 
 # Image transform (same as training)
