@@ -947,7 +947,10 @@ if uploaded_file is not None:
 
     with st.expander("🤖 Analyze with AI (Clinical Summary)"):
         if st.button("Run AI Analysis"):
-            st.session_state.ai_response = generate_ai_summary(ai_summary_payload)
+            with st.spinner("Running AI clinical analysis..."):
+                st.session_state.ai_response = generate_ai_summary(ai_summary_payload)
+
+        if st.session_state.ai_response:
             st.markdown(st.session_state.ai_response)
 
         # ========================================================
@@ -974,6 +977,7 @@ if uploaded_file is not None:
                 )
 
 
+        if st.session_state.patient_guidance:
             st.markdown(st.session_state.patient_guidance)
 
 

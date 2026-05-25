@@ -6,11 +6,12 @@ INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 
 def _get_headers():
-    if "NVIDIA_API_KEY" not in st.secrets:
+    api_key = st.secrets.get("NVIDIA_API_KEY", "")
+    if not api_key:
         return None
 
     return {
-        "Authorization": f"Bearer {st.secrets['NVIDIA_API_KEY']}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
@@ -33,7 +34,7 @@ def _call_nvidia_model(prompt: str) -> str:
     }
 
     try:
-        response = requests.post(INVOKE_URL, headers=headers, json=payload)
+        response = requests.post(INVOKE_URL, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         data = response.json()
 
