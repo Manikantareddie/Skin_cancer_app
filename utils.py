@@ -86,6 +86,14 @@ def validate_skin_lesion_image(pil_image):
         np.array([0, 15, 35], dtype=np.uint8),
         np.array([45, 255, 255], dtype=np.uint8),
     )
+    rgb_max = np.max(resized, axis=2)
+    rgb_min = np.min(resized, axis=2)
+    near_gray_or_white = (
+        (s_channel < 22)
+        & (v_channel > 145)
+        & ((rgb_max - rgb_min) < 28)
+    )
+    ycrcb_mask = np.where(near_gray_or_white, 0, ycrcb_mask).astype(np.uint8)
     skin_mask = cv2.bitwise_or(ycrcb_mask, hsv_mask)
     kernel = np.ones((5, 5), np.uint8)
     skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
@@ -99,7 +107,7 @@ def validate_skin_lesion_image(pil_image):
     white_or_flat_ratio = float(np.mean((s_channel < 35) & (v_channel > 170)))
     edge_density = float(np.mean(cv2.Canny(gray, 80, 160) > 0))
     metrics["document_like"] = bool(
-        metrics["skin_ratio"] < 0.03
+        metrics["skin_ratio"] < 0.08
         and (white_or_flat_ratio > 0.35 or edge_density > 0.09)
     )
     if metrics["document_like"]:

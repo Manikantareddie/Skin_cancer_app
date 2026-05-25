@@ -653,6 +653,7 @@ if uploaded_file is not None:
                     "lesion_candidate_ratio": round(validation_metrics["largest_contour_ratio"], 3),
                     "abnormal_region_ratio": round(validation_metrics["abnormal_region_ratio"], 3),
                     "face_detected": validation_metrics["face_detected"],
+                    "document_like": validation_metrics.get("document_like", False),
                     "image_contrast": round(validation_metrics["contrast"], 2),
                 }
             )
