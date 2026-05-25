@@ -62,6 +62,8 @@ Rules:
 - Do NOT diagnose
 - Do NOT claim certainty
 - Keep language professional and educational
+- Use plain text only
+- Do NOT use Markdown symbols such as ###, **bold**, tables, or code blocks
 
 DATA:
 {payload}
@@ -83,5 +85,7 @@ ABCDE Findings:
 Generate a calm, educational response.
 Do NOT diagnose.
 Do NOT prescribe medication.
+Use plain text only.
+Do NOT use Markdown symbols such as ###, **bold**, tables, or code blocks.
 """
     return _call_nvidia_model(prompt)

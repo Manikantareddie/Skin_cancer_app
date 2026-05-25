@@ -31,6 +31,159 @@ def preprocess_image(pil_image):
     return tensor
 
 
+def validate_skin_lesion_image(pil_image):
+    """
+    Lightweight pre-inference gate to reject obvious non-skin / non-lesion images.
+
+    This is not a medical validator. It prevents the binary classifier from being
+    forced to label unrelated images as Benign or Malignant.
+    """
+    image = np.array(pil_image.convert("RGB"))
+    height, width = image.shape[:2]
+
+    metrics = {
+        "width": width,
+        "height": height,
+        "skin_ratio": 0.0,
+        "largest_contour_ratio": 0.0,
+        "abnormal_region_ratio": 0.0,
+        "face_detected": False,
+        "contrast": 0.0,
+    }
+    reasons = []
+
+    if width < 128 or height < 128:
+        reasons.append("Image resolution is too low for reliable lesion screening.")
+        return False, reasons, metrics
+
+    resized = cv2.resize(image, (256, 256))
+    gray = cv2.cvtColor(resized, cv2.COLOR_RGB2GRAY)
+    metrics["contrast"] = float(np.std(gray))
+
+    if metrics["contrast"] < 5:
+        reasons.append("Image has very low visual contrast or appears nearly blank.")
+
+    # Skin-tone detection using two color spaces. This catches many obvious
+    # non-skin uploads while still allowing a broad range of skin-like colors.
+    ycrcb = cv2.cvtColor(resized, cv2.COLOR_RGB2YCrCb)
+    hsv = cv2.cvtColor(resized, cv2.COLOR_RGB2HSV)
+
+    ycrcb_mask = cv2.inRange(
+        ycrcb,
+        np.array([0, 125, 65], dtype=np.uint8),
+        np.array([255, 185, 145], dtype=np.uint8),
+    )
+    hsv_mask = cv2.inRange(
+        hsv,
+        np.array([0, 15, 35], dtype=np.uint8),
+        np.array([45, 255, 255], dtype=np.uint8),
+    )
+    skin_mask = cv2.bitwise_or(ycrcb_mask, hsv_mask)
+    kernel = np.ones((5, 5), np.uint8)
+    skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
+    skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, kernel)
+    metrics["skin_ratio"] = float(np.count_nonzero(skin_mask) / skin_mask.size)
+
+    low_skin_evidence = metrics["skin_ratio"] < 0.005
+
+    # Reject portrait/face images. The classifier is intended for close-up
+    # lesion/wound crops, not general human photos.
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
+    profile_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_profileface.xml"
+    )
+    frontal_faces = face_cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=4,
+        minSize=(45, 45),
+    )
+    profile_faces = profile_cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=4,
+        minSize=(45, 45),
+    )
+    faces = list(frontal_faces) + list(profile_faces)
+    if len(faces) > 0:
+        largest_face_area = max(w * h for (_, _, w, h) in faces)
+        face_ratio = largest_face_area / float(256 * 256)
+        metrics["face_detected"] = True
+        if face_ratio > 0.04:
+            reasons.append("A face or portrait was detected. Upload a close-up lesion or wound image only.")
+
+    # Look for a localized dark/red lesion-like region. This blocks normal
+    # face/skin photos that have skin pixels but no clear wound/lesion target.
+    lab = cv2.cvtColor(resized, cv2.COLOR_RGB2LAB)
+    l_channel = lab[:, :, 0]
+    h_channel = hsv[:, :, 0]
+    s_channel = hsv[:, :, 1]
+    v_channel = hsv[:, :, 2]
+    red_dominance = (
+        (resized[:, :, 0].astype(np.int16) - resized[:, :, 1].astype(np.int16) > 10)
+        & (resized[:, :, 0].astype(np.int16) - resized[:, :, 2].astype(np.int16) > -5)
+        & (v_channel > 45)
+    )
+    inflamed_region = ((h_channel < 16) | (h_channel > 165)) & (s_channel > 20) & (v_channel > 45)
+    brown_or_dark_region = (l_channel < np.percentile(l_channel, 35)) & (s_channel > 18)
+    crust_or_scale_region = (l_channel > np.percentile(l_channel, 58)) & (s_channel > 10) & (skin_mask > 0)
+    not_background = v_channel > 25
+    abnormal_mask = np.where(
+        (red_dominance | inflamed_region | brown_or_dark_region | crust_or_scale_region) & not_background,
+        255,
+        0
+    ).astype(np.uint8)
+    small_kernel = np.ones((3, 3), np.uint8)
+    abnormal_mask = cv2.morphologyEx(abnormal_mask, cv2.MORPH_OPEN, small_kernel)
+    abnormal_mask = cv2.morphologyEx(abnormal_mask, cv2.MORPH_CLOSE, kernel)
+
+    abnormal_contours, _ = cv2.findContours(
+        abnormal_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    if abnormal_contours:
+        abnormal_area = max(cv2.contourArea(c) for c in abnormal_contours)
+        metrics["abnormal_region_ratio"] = float(abnormal_area / (256 * 256))
+
+    # A lesion image should usually contain a meaningful candidate region.
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, binary = cv2.threshold(
+        blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+
+    candidates = [binary, cv2.bitwise_not(binary)]
+    largest_ratio = 0.0
+    for candidate in candidates:
+        contours, _ = cv2.findContours(
+            candidate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+        for contour in contours:
+            contour_ratio = cv2.contourArea(contour) / float(256 * 256)
+            if 0.003 <= contour_ratio <= 0.90:
+                largest_ratio = max(largest_ratio, contour_ratio)
+
+    metrics["largest_contour_ratio"] = float(largest_ratio)
+
+    has_lesion_evidence = (
+        metrics["abnormal_region_ratio"] >= 0.0001
+        or 0.001 <= largest_ratio <= 0.90
+        or (
+            metrics["skin_ratio"] >= 0.08
+            and metrics["contrast"] >= 10
+            and not metrics["face_detected"]
+        )
+    )
+
+    if low_skin_evidence and not has_lesion_evidence:
+        reasons.append("Image does not appear to contain enough skin or lesion-region evidence.")
+
+    if not has_lesion_evidence:
+        reasons.append("No localized wound or lesion-like region was detected.")
+
+    return len(reasons) == 0, reasons, metrics
+
+
 
 def extract_texture_features(pil_image):
     """

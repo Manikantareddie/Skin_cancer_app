@@ -1,0 +1,12 @@
+.streamlit/secrets.toml
+temp_reports/
+__pycache__/
+*.py[cod]
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.pth
+.env
+.venv/
+venv/
