@@ -52,6 +52,7 @@ def validate_skin_lesion_image(pil_image):
         "largest_contour_ratio": 0.0,
         "abnormal_region_ratio": 0.0,
         "face_detected": False,
+        "document_like": False,
         "contrast": 0.0,
     }
     reasons = []
@@ -71,6 +72,9 @@ def validate_skin_lesion_image(pil_image):
     # non-skin uploads while still allowing a broad range of skin-like colors.
     ycrcb = cv2.cvtColor(resized, cv2.COLOR_RGB2YCrCb)
     hsv = cv2.cvtColor(resized, cv2.COLOR_RGB2HSV)
+    h_channel = hsv[:, :, 0]
+    s_channel = hsv[:, :, 1]
+    v_channel = hsv[:, :, 2]
 
     ycrcb_mask = cv2.inRange(
         ycrcb,
@@ -88,7 +92,18 @@ def validate_skin_lesion_image(pil_image):
     skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, kernel)
     metrics["skin_ratio"] = float(np.count_nonzero(skin_mask) / skin_mask.size)
 
-    low_skin_evidence = metrics["skin_ratio"] < 0.005
+    low_skin_evidence = metrics["skin_ratio"] < 0.03
+
+    # Reject obvious documents, slides, posters, tables, text-heavy images, and UI screenshots.
+    # These often have large white/flat regions and many sharp printed edges.
+    white_or_flat_ratio = float(np.mean((s_channel < 35) & (v_channel > 170)))
+    edge_density = float(np.mean(cv2.Canny(gray, 80, 160) > 0))
+    metrics["document_like"] = bool(
+        metrics["skin_ratio"] < 0.03
+        and (white_or_flat_ratio > 0.35 or edge_density > 0.09)
+    )
+    if metrics["document_like"]:
+        reasons.append("Image appears to be a document, table, poster, text, or graphic instead of a skin lesion photo.")
 
     # Reject portrait/face images. The classifier is intended for close-up
     # lesion/wound crops, not general human photos.
@@ -122,9 +137,6 @@ def validate_skin_lesion_image(pil_image):
     # face/skin photos that have skin pixels but no clear wound/lesion target.
     lab = cv2.cvtColor(resized, cv2.COLOR_RGB2LAB)
     l_channel = lab[:, :, 0]
-    h_channel = hsv[:, :, 0]
-    s_channel = hsv[:, :, 1]
-    v_channel = hsv[:, :, 2]
     red_dominance = (
         (resized[:, :, 0].astype(np.int16) - resized[:, :, 1].astype(np.int16) > 10)
         & (resized[:, :, 0].astype(np.int16) - resized[:, :, 2].astype(np.int16) > -5)
@@ -169,14 +181,17 @@ def validate_skin_lesion_image(pil_image):
 
     metrics["largest_contour_ratio"] = float(largest_ratio)
 
-    has_lesion_evidence = (
+    has_skin_context = metrics["skin_ratio"] >= 0.03
+    has_local_lesion_signal = (
         metrics["abnormal_region_ratio"] >= 0.0001
         or 0.001 <= largest_ratio <= 0.90
-        or (
-            metrics["skin_ratio"] >= 0.08
-            and metrics["contrast"] >= 10
-            and not metrics["face_detected"]
-        )
+        or metrics["contrast"] >= 10
+    )
+    has_lesion_evidence = (
+        has_skin_context
+        and has_local_lesion_signal
+        and not metrics["document_like"]
+        and not metrics["face_detected"]
     )
 
     if low_skin_evidence and not has_lesion_evidence:
