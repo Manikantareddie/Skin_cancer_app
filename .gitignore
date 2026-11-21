@@ -1,12 +1,43 @@
-.streamlit/secrets.toml
-temp_reports/
-__pycache__/
-*.py[cod]
-*.pdf
-*.png
-*.jpg
-*.jpeg
-*.pth
-.env
+# Virtual Environments
 .venv/
 venv/
+backend/.venv/
+env/
+
+# Environment Variables & Secrets
+.env
+backend/.env
+.streamlit/secrets.toml
+
+# Python Caches & Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Model Checkpoints & Large Weights
+*.pth
+*.pt
+*.onnx
+*.bin
+data/models/*.pth
+!data/models/.gitkeep
+
+# Temporary Uploads & Reports
+temp_reports/
+*.pdf
+
+# Node / Frontend Artifacts
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+*.tsbuildinfo
+.npm/
+
+# OS Specific
+.DS_Store
+Thumbs.db
