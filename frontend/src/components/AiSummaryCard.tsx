@@ -62,35 +62,35 @@ export const AiSummaryCard: React.FC<AiSummaryCardProps> = ({
   const isFallback = summaryData?.is_fallback || summaryData?.provider === 'deterministic_rules_engine';
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 md:p-8 space-y-6">
+    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-100">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
-              <Sparkles className="w-5 h-5" />
+            <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700 shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </span>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
               AI Clinical Explanation
             </h3>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 leading-relaxed">
             Synthesized interpretation of neural network activations and morphological features
           </p>
         </div>
 
         {/* Engine Status Badge & Refresh */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
           {summaryData && (
             <div
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-semibold border ${
                 !isFallback
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
                   : 'bg-slate-50 text-slate-700 border-slate-200'
               }`}
             >
-              <Cpu className="w-3 h-3" />
-              <span>{isFallback ? 'Deterministic Clinical Engine' : 'NVIDIA NIM Intelligence'}</span>
+              <Cpu className="w-3 h-3 shrink-0" />
+              <span>{isFallback ? 'Deterministic Engine' : 'NVIDIA NIM Intelligence'}</span>
             </div>
           )}
 
@@ -98,7 +98,8 @@ export const AiSummaryCard: React.FC<AiSummaryCardProps> = ({
             onClick={fetchSummary}
             disabled={loading}
             title="Regenerate explanation"
-            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors disabled:opacity-40 cursor-pointer"
+            aria-label="Regenerate explanation"
+            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors disabled:opacity-40 cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-teal-700' : ''}`} />
           </button>
@@ -107,14 +108,14 @@ export const AiSummaryCard: React.FC<AiSummaryCardProps> = ({
 
       {/* Loading State */}
       {loading && !summaryData && (
-        <div className="py-12 text-center space-y-3">
+        <div className="py-8 sm:py-12 text-center space-y-3 px-4">
           <div className="inline-flex p-3 rounded-2xl bg-teal-50 text-teal-700 animate-pulse">
             <RefreshCw className="w-6 h-6 animate-spin" />
           </div>
           <div className="text-sm font-bold text-slate-800">
             Generating Structured AI Explanation...
           </div>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
             Processing lesion descriptors and calculating clinical interpretations
           </p>
         </div>
@@ -122,15 +123,15 @@ export const AiSummaryCard: React.FC<AiSummaryCardProps> = ({
 
       {/* Error State */}
       {error && !summaryData && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-2">
+        <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-2">
           <div className="flex items-center gap-2 font-bold text-rose-900">
-            <AlertCircle className="w-4 h-4 text-rose-600" />
-            Unable to connect to AI Explanation service
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>Unable to connect to AI Explanation service</span>
           </div>
-          <p>{error}</p>
+          <p className="leading-relaxed">{error}</p>
           <button
             onClick={fetchSummary}
-            className="mt-1 text-xs font-bold text-teal-700 hover:underline cursor-pointer"
+            className="mt-1 text-xs font-bold text-teal-700 hover:underline cursor-pointer min-h-[32px] inline-flex items-center"
           >
             Try Again
           </button>
@@ -139,90 +140,90 @@ export const AiSummaryCard: React.FC<AiSummaryCardProps> = ({
 
       {/* Structured 4-Card Presentation */}
       {explanation && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Card 1: Understanding the Result */}
-            <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between">
+            <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 text-teal-800 font-bold text-xs uppercase tracking-wider mb-2">
-                  <HelpCircle className="w-4 h-4 text-teal-700" />
-                  Understanding the Result
+                <div className="flex items-center gap-1.5 sm:gap-2 text-teal-800 font-bold text-xs uppercase tracking-wider mb-2">
+                  <HelpCircle className="w-4 h-4 text-teal-700 shrink-0" />
+                  <span>Understanding the Result</span>
                 </div>
-                <p className="text-xs text-slate-700 leading-relaxed">
+                <p className="text-xs sm:text-[13px] text-slate-700 leading-relaxed">
                   {explanation.result_explanation}
                 </p>
               </div>
-              <div className="mt-3 pt-3 border-t border-slate-200/60 text-[11px] text-slate-400">
+              <div className="mt-3 pt-3 border-t border-slate-200/60 text-[10px] sm:text-[11px] text-slate-400">
                 Classification reflects statistical pattern alignment from trained images.
               </div>
             </div>
 
             {/* Card 2: What the Model Observed */}
-            <div className="p-5 rounded-2xl bg-teal-50/40 border border-teal-200/60 flex flex-col justify-between">
+            <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-teal-50/40 border border-teal-200/60 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 text-teal-900 font-bold text-xs uppercase tracking-wider mb-2">
-                  <Eye className="w-4 h-4 text-teal-700" />
-                  What the Model Observed
+                <div className="flex items-center gap-1.5 sm:gap-2 text-teal-900 font-bold text-xs uppercase tracking-wider mb-2">
+                  <Eye className="w-4 h-4 text-teal-700 shrink-0" />
+                  <span>What the Model Observed</span>
                 </div>
-                <div className="space-y-2 text-xs text-slate-700">
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-[13px] text-slate-700">
                   {explanation.observed_features.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-1.5">
+                    <div key={idx} className="flex items-start gap-1.5 leading-relaxed">
                       <span className="font-semibold text-teal-950 shrink-0">• {item.feature}:</span>
                       <span className="text-slate-600">{item.explanation}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-teal-200/50 text-[11px] text-teal-700/80">
+              <div className="mt-3 pt-3 border-t border-teal-200/50 text-[10px] sm:text-[11px] text-teal-700/80">
                 Ground-truth visual indicators extracted during preprocessing.
               </div>
             </div>
 
             {/* Card 3: Important Limitations */}
-            <div className="p-5 rounded-2xl bg-amber-50/40 border border-amber-200/70 flex flex-col justify-between">
+            <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-amber-50/40 border border-amber-200/70 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider mb-2">
-                  <ShieldAlert className="w-4 h-4 text-amber-700" />
-                  Important Limitations
+                <div className="flex items-center gap-1.5 sm:gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider mb-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
+                  <span>Important Limitations</span>
                 </div>
-                <ul className="space-y-1.5 text-xs text-slate-700">
+                <ul className="space-y-1.5 text-xs sm:text-[13px] text-slate-700">
                   {explanation.limitations.map((lim, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
+                    <li key={idx} className="flex items-start gap-2 leading-relaxed">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
                       <span>{lim}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="mt-3 pt-3 border-t border-amber-200/50 text-[11px] text-amber-800">
+              <div className="mt-3 pt-3 border-t border-amber-200/50 text-[10px] sm:text-[11px] text-amber-800">
                 Automated models are non-diagnostic decision-support aids.
               </div>
             </div>
 
             {/* Card 4: Suggested Next Steps */}
-            <div className="p-5 rounded-2xl bg-indigo-50/40 border border-indigo-200/60 flex flex-col justify-between">
+            <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-indigo-50/40 border border-indigo-200/60 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider mb-2">
-                  <ArrowRightCircle className="w-4 h-4 text-indigo-700" />
-                  Suggested Next Steps
+                <div className="flex items-center gap-1.5 sm:gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider mb-2">
+                  <ArrowRightCircle className="w-4 h-4 text-indigo-700 shrink-0" />
+                  <span>Suggested Next Steps</span>
                 </div>
-                <ul className="space-y-1.5 text-xs text-slate-700">
+                <ul className="space-y-1.5 text-xs sm:text-[13px] text-slate-700">
                   {explanation.next_steps.map((step, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
+                    <li key={idx} className="flex items-start gap-2 leading-relaxed">
                       <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 mt-0.5 shrink-0" />
                       <span>{step}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="mt-3 pt-3 border-t border-indigo-200/50 text-[11px] text-indigo-700">
+              <div className="mt-3 pt-3 border-t border-indigo-200/50 text-[10px] sm:text-[11px] text-indigo-700">
                 Professional in-person evaluation is recommended for peace of mind.
               </div>
             </div>
           </div>
 
           {/* Legal / Medical Safety Banner */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 text-[11px] text-slate-500 flex items-start gap-2.5">
+          <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-200/70 text-[10px] sm:text-[11px] text-slate-500 flex items-start gap-2 sm:gap-2.5">
             <ShieldAlert className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
             <span className="leading-relaxed">
               <strong>Medical Notice:</strong> {summaryData?.disclaimer}

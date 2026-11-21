@@ -98,7 +98,7 @@ export const App: React.FC = () => {
   const canNavigateToReport = Boolean(analysis && analysis.validation.is_valid);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans antialiased selection:bg-teal-100 selection:text-teal-900">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans antialiased selection:bg-teal-100 selection:text-teal-900 overflow-x-hidden">
       {/* Top Clinical Navigation with 4 Stages */}
       <Navbar
         currentStage={stage}
@@ -109,18 +109,19 @@ export const App: React.FC = () => {
         onShowDiagnostics={() => setShowDiagnostics(true)}
       />
 
-      {/* Main Screening Work Area (Max width 1140px centered) */}
-      <main className="flex-1 max-w-[1140px] w-full mx-auto px-4 py-8 md:py-12">
+      {/* Main Screening Work Area (Max width 1140px centered, responsive padding) */}
+      <main className="flex-1 max-w-[1140px] w-full mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-10">
         {/* Global Error Banner */}
         {globalError && (
-          <div className="max-w-2xl mx-auto mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start justify-between gap-3 shadow-xs">
+          <div className="max-w-2xl mx-auto mb-4 sm:mb-6 p-3 sm:p-4 bg-rose-50 border border-rose-200 rounded-xl sm:rounded-2xl text-rose-800 text-xs flex items-start justify-between gap-2.5 shadow-xs">
             <div className="flex items-center gap-2 font-medium">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-              <span>{globalError}</span>
+              <span className="leading-relaxed">{globalError}</span>
             </div>
             <button
               onClick={() => setGlobalError(null)}
-              className="text-rose-500 hover:text-rose-800 p-1 cursor-pointer"
+              className="text-rose-500 hover:text-rose-800 p-1 cursor-pointer shrink-0"
+              aria-label="Close error banner"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -174,15 +175,15 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Hidden Diagnostics Modal for developers */}
+      {/* Diagnostics Modal for developers */}
       {showDiagnostics && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 relative">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <h3 className="text-sm font-bold text-slate-900">Developer Diagnostics</h3>
               <button
                 onClick={() => setShowDiagnostics(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -191,7 +192,7 @@ export const App: React.FC = () => {
             <div className="mt-4 text-right">
               <button
                 onClick={() => setShowDiagnostics(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl cursor-pointer"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl cursor-pointer min-h-[36px]"
               >
                 Close
               </button>
@@ -201,12 +202,12 @@ export const App: React.FC = () => {
       )}
 
       {/* Document/App Footer */}
-      <footer className="print:hidden border-t border-slate-200/80 bg-white py-6">
-        <div className="max-w-[1140px] mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+      <footer className="print:hidden border-t border-slate-200/80 bg-white py-4 sm:py-6 mt-auto">
+        <div className="max-w-[1140px] mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 text-center sm:text-left text-xs text-slate-400">
           <div>
             AI Skin Cancer Detection & CDSS • Multimodal ResNet-18 Texture Fusion
           </div>
-          <div className="text-[11px] text-slate-400">
+          <div className="text-[10px] sm:text-[11px] text-slate-400">
             For educational clinical screening decision support only. Not a medical diagnosis.
           </div>
         </div>
