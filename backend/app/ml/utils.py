@@ -115,31 +115,36 @@ def validate_skin_lesion_image(pil_image):
 
     # Reject portrait/face images. The classifier is intended for close-up
     # lesion/wound crops, not general human photos.
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-    profile_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_profileface.xml"
-    )
-    frontal_faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=4,
-        minSize=(45, 45),
-    )
-    profile_faces = profile_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=4,
-        minSize=(45, 45),
-    )
-    faces = list(frontal_faces) + list(profile_faces)
-    if len(faces) > 0:
-        largest_face_area = max(w * h for (_, _, w, h) in faces)
-        face_ratio = largest_face_area / float(256 * 256)
-        metrics["face_detected"] = True
-        if face_ratio > 0.04:
-            reasons.append("A face or portrait was detected. Upload a close-up lesion or wound image only.")
+    if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+        try:
+            face_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+            profile_path = cv2.data.haarcascades + "haarcascade_profileface.xml"
+            face_cascade = cv2.CascadeClassifier(face_path)
+            profile_cascade = cv2.CascadeClassifier(profile_path)
+
+            if not face_cascade.empty() and not profile_cascade.empty():
+                frontal_faces = face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=4,
+                    minSize=(45, 45),
+                )
+                profile_faces = profile_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=4,
+                    minSize=(45, 45),
+                )
+                faces = list(frontal_faces) + list(profile_faces)
+                if len(faces) > 0:
+                    largest_face_area = max(w * h for (_, _, w, h) in faces)
+                    face_ratio = largest_face_area / float(256 * 256)
+                    metrics["face_detected"] = True
+                    if face_ratio > 0.04:
+                        reasons.append("A face or portrait was detected. Upload a close-up lesion or wound image only.")
+        except Exception:
+            # Face cascade check encountered an issue; proceed with remaining image gate heuristics
+            pass
 
     # Look for a localized dark/red lesion-like region. This blocks normal
     # face/skin photos that have skin pixels but no clear wound/lesion target.

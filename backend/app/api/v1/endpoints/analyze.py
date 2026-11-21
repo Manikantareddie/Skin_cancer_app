@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -24,6 +25,7 @@ from backend.app.services.clinical_service import (
 )
 from backend.app.services.model_service import model_service
 
+logger = logging.getLogger("skin_cancer_backend")
 router = APIRouter()
 
 
@@ -71,76 +73,85 @@ async def analyze_lesion_image(
     case_id = f"SKIN-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
     timestamp = datetime.utcnow().isoformat() + "Z"
 
-    # Step 1: Pre-inference Image Validation Gate
-    validation_result = validate_image(pil_image)
+    try:
+        # Step 1: Pre-inference Image Validation Gate
+        validation_result = validate_image(pil_image)
 
-    if not validation_result.is_valid:
+        if not validation_result.is_valid:
+            return AnalysisResponse(
+                case_id=case_id,
+                timestamp=timestamp,
+                validation=validation_result,
+                prediction=None,
+                abcde=None,
+                clinical_risk=None,
+                heatmap_base64=None,
+            )
+
+        # Step 2: Diameter Assessment
+        calib_result: Optional[RulerCalibrationResult] = None
+        if p1_x is not None and p1_y is not None and p2_x is not None and p2_y is not None and physical_distance_mm:
+            try:
+                pt1 = CalibrationPoint(x=p1_x, y=p1_y)
+                pt2 = CalibrationPoint(x=p2_x, y=p2_y)
+                calib_result = calibrate_two_points(pt1, pt2, physical_distance_mm)
+            except Exception:
+                pass
+
+        diameter_eval = calculate_diameter_assessment(
+            pil_image,
+            calibration_result=calib_result,
+            manual_diameter_mm=manual_diameter_mm,
+        )
+
+        # Step 3: Evolution Assessment
+        reported_changes = PatientReportedChanges()
+        if patient_reported_json:
+            try:
+                data = json.loads(patient_reported_json)
+                reported_changes = PatientReportedChanges.model_validate(data)
+            except Exception:
+                pass
+
+        evolution_eval = compare_evolution(
+            followup_image=pil_image,
+            baseline_image=baseline_img,
+            baseline_date=baseline_date,
+            followup_date=followup_date,
+            reported_changes=reported_changes,
+        )
+
+        # Step 4: ABCDE Feature Extraction with validated D and E
+        abcde_indicators = extract_abcde_indicators(
+            pil_image,
+            diameter_assessment=diameter_eval,
+            evolution_assessment=evolution_eval,
+        )
+
+        # Step 5: ResNet + Texture Fusion Inference and Grad-CAM
+        prediction_result, heatmap_base64, _ = model_service.predict(pil_image)
+
+        # Step 6: Multi-factorial Clinical Risk Evaluation
+        clinical_risk = evaluate_clinical_risk(
+            abcde_indicators,
+            prediction_result.predicted_label,
+            prediction_result.confidence_score,
+        )
+
         return AnalysisResponse(
             case_id=case_id,
             timestamp=timestamp,
             validation=validation_result,
-            prediction=None,
-            abcde=None,
-            clinical_risk=None,
-            heatmap_base64=None,
+            prediction=prediction_result,
+            abcde=abcde_indicators,
+            clinical_risk=clinical_risk,
+            heatmap_base64=heatmap_base64,
         )
-
-    # Step 2: Diameter Assessment
-    calib_result: Optional[RulerCalibrationResult] = None
-    if p1_x is not None and p1_y is not None and p2_x is not None and p2_y is not None and physical_distance_mm:
-        try:
-            pt1 = CalibrationPoint(x=p1_x, y=p1_y)
-            pt2 = CalibrationPoint(x=p2_x, y=p2_y)
-            calib_result = calibrate_two_points(pt1, pt2, physical_distance_mm)
-        except Exception:
-            pass
-
-    diameter_eval = calculate_diameter_assessment(
-        pil_image,
-        calibration_result=calib_result,
-        manual_diameter_mm=manual_diameter_mm,
-    )
-
-    # Step 3: Evolution Assessment
-    reported_changes = PatientReportedChanges()
-    if patient_reported_json:
-        try:
-            data = json.loads(patient_reported_json)
-            reported_changes = PatientReportedChanges.model_validate(data)
-        except Exception:
-            pass
-
-    evolution_eval = compare_evolution(
-        followup_image=pil_image,
-        baseline_image=baseline_img,
-        baseline_date=baseline_date,
-        followup_date=followup_date,
-        reported_changes=reported_changes,
-    )
-
-    # Step 4: ABCDE Feature Extraction with validated D and E
-    abcde_indicators = extract_abcde_indicators(
-        pil_image,
-        diameter_assessment=diameter_eval,
-        evolution_assessment=evolution_eval,
-    )
-
-    # Step 5: ResNet + Texture Fusion Inference and Grad-CAM
-    prediction_result, heatmap_base64, _ = model_service.predict(pil_image)
-
-    # Step 6: Multi-factorial Clinical Risk Evaluation
-    clinical_risk = evaluate_clinical_risk(
-        abcde_indicators,
-        prediction_result.predicted_label,
-        prediction_result.confidence_score,
-    )
-
-    return AnalysisResponse(
-        case_id=case_id,
-        timestamp=timestamp,
-        validation=validation_result,
-        prediction=prediction_result,
-        abcde=abcde_indicators,
-        clinical_risk=clinical_risk,
-        heatmap_base64=heatmap_base64,
-    )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception(f"Unexpected error during lesion analysis pipeline: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while analyzing the lesion image. Please ensure the image is clear and try again.",
+        )

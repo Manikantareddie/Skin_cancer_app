@@ -22,11 +22,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy backend requirements specification
 COPY backend/requirements.txt /app/backend/requirements.txt
 
+# Ensure pip is up to date and uninstall any conflicting OpenCV distributions
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip uninstall -y opencv-python opencv-contrib-python opencv-contrib-python-headless opencv-python-headless cv2 2>/dev/null || true
+
 # Install CPU-only PyTorch & Torchvision first from the official PyTorch CPU wheel index
 # This reduces container image size by ~85% (from >2.5GB to <800MB) and prevents OOM on Render
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r /app/backend/requirements.txt
+
+# Rigorous build-time verification: ensure OpenCV runtime provides CascadeClassifier and Haar cascade data
+RUN python -c '\
+import cv2;\
+print("OpenCV location:", cv2.__file__);\
+print("OpenCV version:", cv2.__version__);\
+assert hasattr(cv2, "CascadeClassifier"), "cv2 missing CascadeClassifier";\
+assert hasattr(cv2, "data"), "cv2 missing data attribute";\
+assert hasattr(cv2.data, "haarcascades"), "cv2.data missing haarcascades attribute";\
+cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml";\
+cascade = cv2.CascadeClassifier(cascade_path);\
+assert not cascade.empty(), f"Failed to load Haar cascade from {cascade_path}";\
+print("Build-time OpenCV Haar cascade verification: PASSED")\
+'
 
 # Create necessary application and caching directories
 RUN mkdir -p /app/data/models /app/data/examples /tmp/models

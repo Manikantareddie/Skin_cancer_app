@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: Union[List[str], str] = [
+        "https://skin-cancer-app-three.vercel.app",
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
@@ -48,18 +49,29 @@ class Settings(BaseSettings):
         return v
 
     def get_allowed_origins(self) -> List[str]:
-        """Resolves allowed origins list whether configured as JSON string, comma list, or list."""
+        """Resolves allowed origins list, stripping trailing slashes and whitespace."""
+        raw_list = []
         if isinstance(self.ALLOWED_ORIGINS, list):
-            return self.ALLOWED_ORIGINS
-        if isinstance(self.ALLOWED_ORIGINS, str):
+            raw_list = self.ALLOWED_ORIGINS
+        elif isinstance(self.ALLOWED_ORIGINS, str):
             val = self.ALLOWED_ORIGINS.strip()
             if val.startswith("[") and val.endswith("]"):
                 try:
-                    return json.loads(val)
+                    raw_list = json.loads(val)
                 except Exception:
-                    pass
-            return [orig.strip() for orig in val.split(",") if orig.strip()]
-        return ["http://localhost:5173", "http://localhost:3000"]
+                    raw_list = [orig.strip() for orig in val.strip("[]").split(",") if orig.strip()]
+            else:
+                raw_list = [orig.strip() for orig in val.split(",") if orig.strip()]
+        else:
+            raw_list = ["https://skin-cancer-app-three.vercel.app", "http://localhost:5173"]
+
+        cleaned = []
+        for o in raw_list:
+            if isinstance(o, str):
+                cleaned_o = o.strip().rstrip("/")
+                if cleaned_o and cleaned_o not in cleaned:
+                    cleaned.append(cleaned_o)
+        return cleaned
 
 
 settings = Settings()

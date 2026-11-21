@@ -21,14 +21,19 @@ def health_check():
 def readiness_check(response: Response):
     """
     Readiness probe: distinguishes API server liveness from model inference readiness.
-    Returns HTTP 200 when PyTorch model checkpoint is loaded.
+    Returns HTTP 200 when PyTorch model checkpoint is loaded and OpenCV is verified.
     Returns HTTP 503 Service Unavailable when model is downloading, warming up, or encountered an error.
     """
+    from backend.app.main import verify_opencv_runtime
+    cv_ok, cv_msg = verify_opencv_runtime()
+
     status_data = model_service.get_status()
     if status_data.is_loaded:
         return {
             "status": "ready",
             "model_loaded": True,
+            "opencv_verified": cv_ok,
+            "opencv_detail": cv_msg,
             "device": status_data.device,
             "architecture": status_data.architecture,
             "model_path": status_data.model_path,
@@ -40,6 +45,7 @@ def readiness_check(response: Response):
         return {
             "status": "error",
             "model_loaded": False,
+            "opencv_verified": cv_ok,
             "error": model_service.load_error,
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
@@ -48,6 +54,7 @@ def readiness_check(response: Response):
     return {
         "status": "loading",
         "model_loaded": False,
+        "opencv_verified": cv_ok,
         "detail": "Model checkpoint is downloading or initializing in the background.",
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
