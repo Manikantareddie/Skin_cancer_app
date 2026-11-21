@@ -1,0 +1,51 @@
+# Git and version control
+.git
+.github
+
+# Secrets and environment configs
+.env
+.env.*
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+.streamlit/secrets.toml
+
+# Virtual environments
+.venv/
+venv/
+backend/.venv/
+env/
+
+# Python caches and artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model checkpoint weights (downloaded via Hugging Face Hub dynamically)
+*.pth
+*.pt
+*.onnx
+*.bin
+data/models/*.pth
+
+# Frontend build outputs and node_modules
+frontend/node_modules/
+frontend/dist/
+dist/
+node_modules/
+
+# Temporary generated files and medical uploads
+temp_reports/
+*.pdf
+uploads/
+temp/
+
+# OS specific files
+.DS_Store
+Thumbs.db

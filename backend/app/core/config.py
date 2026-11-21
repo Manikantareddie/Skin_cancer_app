@@ -1,5 +1,8 @@
 from pathlib import Path
-from typing import List
+from typing import List, Union
+import json
+import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,12 +12,14 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # CORS
-    ALLOWED_ORIGINS: List[str] = [
+    ALLOWED_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
     ]
+    # Regex to automatically accept all Vercel production and preview domains
+    ALLOWED_ORIGIN_REGEX: str = r"^https:\/\/.*\.vercel\.app$"
 
     # Model & Storage Settings
     MODEL_REPO_ID: str = "reddysorgs/skin-cancer-cdss-model"
@@ -34,6 +39,27 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @field_validator("MODEL_DIR", mode="before")
+    @classmethod
+    def parse_model_dir(cls, v):
+        if isinstance(v, str):
+            return Path(v)
+        return v
+
+    def get_allowed_origins(self) -> List[str]:
+        """Resolves allowed origins list whether configured as JSON string, comma list, or list."""
+        if isinstance(self.ALLOWED_ORIGINS, list):
+            return self.ALLOWED_ORIGINS
+        if isinstance(self.ALLOWED_ORIGINS, str):
+            val = self.ALLOWED_ORIGINS.strip()
+            if val.startswith("[") and val.endswith("]"):
+                try:
+                    return json.loads(val)
+                except Exception:
+                    pass
+            return [orig.strip() for orig in val.split(",") if orig.strip()]
+        return ["http://localhost:5173", "http://localhost:3000"]
 
 
 settings = Settings()

@@ -1,0 +1,23 @@
+# Render Blueprint Specification for DermaAssist Backend Web Service
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: dermaassist-backend
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    plan: starter # Starter or Free tier (512MB RAM minimum)
+    region: oregon # or ohio, frankfurt, singapore
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NVIDIA_API_KEY
+        sync: false # Set securely in the Render dashboard
+      - key: NVIDIA_MODEL
+        value: nvidia/nemotron-3.5-lightning-30b-a3b
+      - key: NVIDIA_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:5173,http://localhost:3000

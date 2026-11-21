@@ -23,6 +23,8 @@ class ModelService:
         self.gradcam: Optional[GradCAM] = None
         self.model_path: Optional[str] = None
         self.is_loaded: bool = False
+        self.is_loading: bool = False
+        self.load_error: Optional[str] = None
         self.device = torch.device(settings.DEVICE)
 
     @classmethod
@@ -32,37 +34,56 @@ class ModelService:
         return cls._instance
 
     def load_model(self, force_reload: bool = False) -> None:
-        """Loads the ResNetTextureFusion model checkpoint with local caching in data/models/."""
+        """Loads the ResNetTextureFusion model checkpoint with local caching."""
         if self.is_loaded and not force_reload:
             return
 
-        settings.MODEL_DIR.mkdir(parents=True, exist_ok=True)
-        local_target_path = settings.MODEL_DIR / settings.MODEL_FILENAME
+        self.is_loading = True
+        self.load_error = None
 
-        if local_target_path.exists():
-            resolved_path = str(local_target_path)
-        else:
-            # Download from Hugging Face Hub and cache locally in data/models
-            downloaded_path = hf_hub_download(
-                repo_id=settings.MODEL_REPO_ID,
-                filename=settings.MODEL_FILENAME,
-            )
-            # Copy to project's data/models directory for persistent local caching
-            shutil.copy2(downloaded_path, str(local_target_path))
-            resolved_path = str(local_target_path)
+        try:
+            # Ensure model cache directory exists, falling back to /tmp/models if needed
+            target_dir = settings.MODEL_DIR
+            try:
+                target_dir.mkdir(parents=True, exist_ok=True)
+            except (PermissionError, OSError):
+                target_dir = Path("/tmp/models")
+                target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Instantiate model architecture
-        model = ResNetTextureFusion()
-        state_dict = torch.load(resolved_path, map_location=self.device)
-        model.load_state_dict(state_dict)
-        model.to(self.device)
-        model.eval()
+            local_target_path = target_dir / settings.MODEL_FILENAME
 
-        self.model = model
-        # Target the last BasicBlock in ResNet-18 layer4 for Grad-CAM
-        self.gradcam = GradCAM(model, model.backbone.layer4[-1])
-        self.model_path = resolved_path
-        self.is_loaded = True
+            if local_target_path.exists():
+                resolved_path = str(local_target_path)
+            else:
+                # Download from Hugging Face Hub
+                downloaded_path = hf_hub_download(
+                    repo_id=settings.MODEL_REPO_ID,
+                    filename=settings.MODEL_FILENAME,
+                )
+                try:
+                    shutil.copy2(downloaded_path, str(local_target_path))
+                    resolved_path = str(local_target_path)
+                except (PermissionError, OSError):
+                    resolved_path = downloaded_path
+
+            # Instantiate model architecture
+            model = ResNetTextureFusion()
+            state_dict = torch.load(resolved_path, map_location=self.device)
+            model.load_state_dict(state_dict)
+            model.to(self.device)
+            model.eval()
+
+            self.model = model
+            # Target the last BasicBlock in ResNet-18 layer4 for Grad-CAM
+            self.gradcam = GradCAM(model, model.backbone.layer4[-1])
+            self.model_path = resolved_path
+            self.is_loaded = True
+            self.is_loading = False
+        except Exception as e:
+            self.is_loaded = False
+            self.is_loading = False
+            self.load_error = str(e)
+            raise
 
     def get_status(self) -> ModelStatusResponse:
         return ModelStatusResponse(

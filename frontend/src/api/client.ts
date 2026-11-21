@@ -9,7 +9,10 @@ import type {
   PatientReportedChanges,
 } from './types';
 
-const API_BASE = '/api/v1';
+// Support deployment environments (e.g. Vercel) where API URL is set via VITE_API_URL.
+// In local development, defaults to '/api/v1' which is proxied by Vite dev server.
+const rawApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+const API_BASE = rawApiUrl ? `${rawApiUrl.replace(/\/+$/, '')}/api/v1` : '/api/v1';
 
 export async function fetchHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE}/health`);

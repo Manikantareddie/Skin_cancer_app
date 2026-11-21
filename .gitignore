@@ -6,7 +6,16 @@ env/
 
 # Environment Variables & Secrets
 .env
+.env.local
+.env.development
+.env.test
+.env.production
+!.env.example
+!*/.env.example
 backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.production
 .streamlit/secrets.toml
 
 # Python Caches & Artifacts
